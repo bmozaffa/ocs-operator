@@ -1,0 +1,128 @@
+---
+## Add a custom CatalogSource for the ocs-operator CSV
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: ocs-catalogsource
+  namespace: openshift-marketplace
+spec:
+  sourceType: grpc
+  image: quay.io/kshlm/ocs-registry:mon-test
+  displayName: Openshift Container Storage
+  publisher: Red Hat
+---
+## Create the openshift-storage namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openshift-storage
+
+---
+## Create the ocs OperatorGroup to allow installation of the OCS CSV into the
+## openshift-storage namespace
+apiVersion: operators.coreos.com/v1alpha2
+kind: OperatorGroup
+metadata:
+  name: openshift-storage-operatorgroup
+  namespace: openshift-storage
+spec:
+  targetNamespaces:
+    - openshift-storage
+
+---
+## Create a Subscription for the OCS operator CSV in the openshift-storage namespace
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: ocs-subscription
+  namespace: openshift-storage
+spec:
+  channel: alpha
+  name: ocs-operator
+  source: ocs-catalogsource
+  sourceNamespace: openshift-marketplace
+
+---
+## XXX: Creating the SCCs required to get the mons to run here. This is just a stop-gap arrangement till we have the ocs-operator itself create the required SCCs.
+## TODO: REMOVE THIS.
+kind: SecurityContextConstraints
+apiVersion: security.openshift.io/v1
+metadata:
+  name: rook-ceph
+allowPrivilegedContainer: true
+allowHostNetwork: true
+allowHostDirVolumePlugin: true
+priority:
+allowedCapabilities: []
+allowHostPorts: true
+allowHostPID: true
+allowHostIPC: true
+readOnlyRootFilesystem: false
+requiredDropCapabilities: []
+defaultAddCapabilities: []
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: MustRunAs
+fsGroup:
+  type: MustRunAs
+supplementalGroups:
+  type: RunAsAny
+allowedFlexVolumes:
+  - driver: "ceph.rook.io/rook"
+  - driver: "ceph.rook.io/rook-ceph"
+volumes:
+  - configMap
+  - downwardAPI
+  - emptyDir
+  - flexVolume
+  - hostPath
+  - persistentVolumeClaim
+  - projected
+  - secret
+users:
+  # A user needs to be added for each rook service account.
+  # This assumes running in the default sample "rook-ceph" namespace.
+  # If other namespaces or service accounts are configured, they need to be updated here.
+  - system:serviceaccount:openshift-storage:rook-ceph-system
+  - system:serviceaccount:openshift-storage:default
+  - system:serviceaccount:openshift-storage:rook-ceph-mgr
+  - system:serviceaccount:openshift-storage:rook-ceph-osd
+---
+# scc for the CSI driver
+kind: SecurityContextConstraints
+apiVersion: security.openshift.io/v1
+metadata:
+  name: rook-ceph-csi
+allowPrivilegedContainer: true
+allowHostNetwork: true
+allowHostDirVolumePlugin: true
+priority:
+allowedCapabilities: ['*']
+allowHostPorts: true
+allowHostPID: true
+allowHostIPC: true
+readOnlyRootFilesystem: false
+requiredDropCapabilities: []
+defaultAddCapabilities: []
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: RunAsAny
+fsGroup:
+  type: RunAsAny
+supplementalGroups:
+  type: RunAsAny
+allowedFlexVolumes:
+  - driver: "ceph.rook.io/rook"
+  - driver: "ceph.rook.io/rook-ceph"
+volumes: ['*']
+users:
+  # A user needs to be added for each rook service account.
+  # This assumes running in the default sample "rook-ceph" namespace.
+  # If other namespaces or service accounts are configured, they need to be updated here.
+  - system:serviceaccount:openshift-storage:rook-csi-rbd-plugin-sa
+  - system:serviceaccount:openshift-storage:rook-csi-rbd-provisioner-sa
+  - system:serviceaccount:openshift-storage:rook-csi-rbd-attacher-sa
+  - system:serviceaccount:openshift-storage:rook-csi-cephfs-plugin-sa
+  - system:serviceaccount:openshift-storage:rook-csi-cephfs-provisioner-sa

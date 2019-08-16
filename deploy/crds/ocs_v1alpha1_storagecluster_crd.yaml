@@ -1,0 +1,70 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: storageclusters.ocs.openshift.io
+spec:
+  group: ocs.openshift.io
+  names:
+    kind: StorageCluster
+    listKind: StorageClusterList
+    plural: storageclusters
+    singular: storagecluster
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            instanceType:
+              type: string
+            manageNodes:
+              type: boolean
+            storageDeviceSets:
+              items:
+                properties:
+                  config:
+                    type: object
+                  count:
+                    format: int64
+                    type: integer
+                  dataPVCTemplate:
+                    type: object
+                  name:
+                    type: string
+                  placement:
+                    properties:
+                      nodeAffinity:
+                        type: object
+                      podAffinity:
+                        type: object
+                      podAntiAffinity:
+                        type: object
+                      tolerations:
+                        items:
+                          type: object
+                        type: array
+                    type: object
+                  resources:
+                    type: object
+                required:
+                - name
+                - count
+                - resources
+                - placement
+                - dataPVCTemplate
+                type: object
+              type: array
+          type: object
+        status:
+          type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
